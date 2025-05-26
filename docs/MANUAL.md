@@ -59,7 +59,7 @@ PIPD is an advanced Python package management tool designed specifically for Deb
 
 ```bash
 # Download and run the installation script
-wget https://github.com/yourusername/pipd/raw/main/install.sh
+wget https://github.com/mestadler/pipd/raw/main/install.sh
 sudo bash install.sh
 ```
 
@@ -453,7 +453,7 @@ sudo grep ERROR /var/log/pipd/pipd.log
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/pipd.git
+git clone https://github.com/mestadler/pipd.git
 cd pipd
 
 # Create virtual environment
@@ -581,6 +581,6 @@ PIPD is released under the MIT License. See LICENSE file for details.
 
 ## Support
 
-- **Issues**: https://github.com/yourusername/pipd/issues
-- **Discussions**: https://github.com/yourusername/pipd/discussions
-- **Wiki**: https://github.com/yourusername/pipd/wiki
+- **Issues**: https://github.com/mestadler/pipd/issues
+- **Discussions**: https://github.com/mestadler/pipd/discussions
+- **Wiki**: https://github.com/mestadler/pipd/wiki

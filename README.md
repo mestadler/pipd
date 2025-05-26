@@ -49,7 +49,7 @@ Modern Debian/Ubuntu systems implement PEP 668, which prevents pip from installi
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pipd.git
+git clone https://github.com/mestadler/pipd.git
 cd pipd
 
 # Run the installer
@@ -196,7 +196,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pipd.git
+git clone https://github.com/mestadler/pipd.git
 cd pipd
 
 # Create virtual environment
@@ -241,9 +241,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/pipd/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/pipd/discussions)
-- **Wiki**: [Project Wiki](https://github.com/yourusername/pipd/wiki)
+- **Issues**: [GitHub Issues](https://github.com/mestadler/pipd/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/mestadler/pipd/discussions)
+- **Wiki**: [Project Wiki](https://github.com/mestadler/pipd/wiki)
 
 ---
 
