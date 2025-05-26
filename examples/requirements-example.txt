@@ -1,0 +1,11 @@
+# Example requirements file for PIPD
+requests>=2.28.0
+click>=8.0.0
+toml>=0.10.2
+
+# Version specifiers are supported
+django==4.2
+flask>=2.0,<3.0
+
+# Comments and blank lines are ignored
+numpy  # Scientific computing

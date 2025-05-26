@@ -1,0 +1,41 @@
+# Example PIPD Configuration
+
+[general]
+# Prefer system packages over PyPI packages
+prefer_system_packages = true
+
+# Cache TTL in seconds (1 hour)
+cache_ttl = 3600
+
+# Enable verbose logging
+verbose = false
+
+# Maximum retry attempts
+max_retries = 3
+
+[sources]
+# Check Debian repositories first
+check_debian_first = true
+
+# Allow fallback to PyPI if not found in Debian
+allow_pypi_fallback = true
+
+[security]
+# Allow unsigned packages (not recommended)
+allow_unsigned_packages = false
+
+# Verify package checksums
+verify_checksums = true
+
+# Safe mode - extra security checks
+safe_mode = true
+
+[paths]
+# Cache directory
+cache_dir = "~/.cache/pipd"
+
+# Log directory
+log_dir = "~/.local/share/pipd/logs"
+
+# Temporary directory
+temp_dir = "/tmp/pipd"

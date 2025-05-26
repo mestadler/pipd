@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+/var/log/pipd/
+
+# Temp files
+temp/
+tmp/
+*.tmp
+*.bak
+*~
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PIPD specific
+/opt/pipd-venv/
+*.deb
+pipd_fixed
+*_fixed
+
+# Keep example configs
+!examples/*.example
