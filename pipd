@@ -31,34 +31,29 @@ __version__ = "0.2.0"
 
 # Configure logging
 LOGGING_CONFIG = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'detailed': {
-            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S'
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "detailed": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        'simple': {
-            'format': '%(levelname)s: %(message)s'
-        }
+        "simple": {"format": "%(levelname)s: %(message)s"},
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-            'stream': 'ext://sys.stdout'
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout",
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'formatter': 'detailed',
-            'filename': '/var/log/pipd.log',
-            'mode': 'a'
-        }
+        "file": {
+            "class": "logging.FileHandler",
+            "formatter": "detailed",
+            "filename": "/var/log/pipd.log",
+            "mode": "a",
+        },
     },
-    'root': {
-        'level': 'INFO',
-        'handlers': ['console']
-    }
+    "root": {"level": "INFO", "handlers": ["console"]},
 }
 
 # Try to configure logging with file handler, fall back to console only
@@ -66,7 +61,7 @@ try:
     logging.config.dictConfig(LOGGING_CONFIG)
 except (PermissionError, FileNotFoundError):
     # If we can't write to /var/log, use console only
-    LOGGING_CONFIG['root']['handlers'] = ['console']
+    LOGGING_CONFIG["root"]["handlers"] = ["console"]
     logging.config.dictConfig(LOGGING_CONFIG)
 
 logger = logging.getLogger(__name__)
@@ -75,21 +70,25 @@ logger = logging.getLogger(__name__)
 # Exceptions
 class PipdError(Exception):
     """Base exception for pipd errors"""
+
     pass
 
 
 class PackageNotFoundError(PipdError):
     """Package not found in any source"""
+
     pass
 
 
 class DependencyConflictError(PipdError):
     """Dependency version conflict detected"""
+
     pass
 
 
 class InstallationError(PipdError):
     """Package installation failed"""
+
     def __init__(self, package: str, reason: str, recovery_suggestion: str = None):
         self.package = package
         self.reason = reason
@@ -102,6 +101,7 @@ class InstallationError(PipdError):
 
 class SecurityError(PipdError):
     """Security-related error"""
+
     pass
 
 
@@ -109,6 +109,7 @@ class SecurityError(PipdError):
 @dataclass
 class PackageInfo:
     """Information about a package"""
+
     name: str
     version: Optional[str]
     source: str  # 'debian' or 'pypi'
@@ -118,9 +119,10 @@ class PackageInfo:
 @dataclass
 class CachedResult:
     """Cached result with timestamp"""
+
     value: Any
     timestamp: float
-    
+
     def is_valid(self, ttl: int = 3600) -> bool:
         """Check if cache is still valid"""
         return time.time() - self.timestamp < ttl
@@ -128,6 +130,7 @@ class CachedResult:
 
 class PackageSource(Enum):
     """Package source enumeration"""
+
     DEBIAN = "debian"
     PYPI = "pypi"
     UNKNOWN = "unknown"
@@ -137,23 +140,25 @@ class PackageSource(Enum):
 def cached(ttl: int = 3600):
     """Cache decorator with TTL"""
     cache = {}
-    
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Create cache key from function name and arguments
             key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            
+
             # Check cache
             if key in cache and cache[key].is_valid(ttl):
                 logger.debug(f"Cache hit for {key}")
                 return cache[key].value
-            
+
             # Call function and cache result
             result = func(*args, **kwargs)
             cache[key] = CachedResult(result, time.time())
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -168,7 +173,7 @@ def check_privileges():
 def validate_package_name(package_name: str) -> bool:
     """Validate package name for security"""
     # Only allow alphanumeric, dots, dashes, and underscores
-    if not re.match(r'^[a-zA-Z0-9._-]+$', package_name):
+    if not re.match(r"^[a-zA-Z0-9._-]+$", package_name):
         raise SecurityError(f"Invalid package name: {package_name}")
     return True
 
@@ -176,7 +181,7 @@ def validate_package_name(package_name: str) -> bool:
 def parse_package_spec(spec: str) -> Tuple[str, Optional[str]]:
     """Parse package specification into name and version"""
     # Handle different version specifiers
-    for separator in ['==', '>=', '<=', '>', '<', '~=']:
+    for separator in ["==", ">=", "<=", ">", "<", "~="]:
         if separator in spec:
             name, version = spec.split(separator, 1)
             return name.strip(), version.strip()
@@ -186,45 +191,45 @@ def parse_package_spec(spec: str) -> Tuple[str, Optional[str]]:
 # Configuration management
 class Config:
     """Configuration manager"""
+
     DEFAULT_CONFIG = {
-        'general': {
-            'prefer_system_packages': True,
-            'cache_ttl': 3600,
-            'verbose': False,
-            'max_retries': 3
+        "general": {
+            "prefer_system_packages": True,
+            "cache_ttl": 3600,
+            "verbose": False,
+            "max_retries": 3,
         },
-        'sources': {
-            'check_debian_first': True,
-            'allow_pypi_fallback': True
+        "sources": {"check_debian_first": True, "allow_pypi_fallback": True},
+        "security": {
+            "allow_unsigned_packages": False,
+            "verify_checksums": True,
+            "safe_mode": True,
         },
-        'security': {
-            'allow_unsigned_packages': False,
-            'verify_checksums': True,
-            'safe_mode': True
+        "paths": {
+            "cache_dir": "~/.cache/pipd",
+            "log_dir": "~/.local/share/pipd/logs",
+            "temp_dir": "/tmp/pipd",
         },
-        'paths': {
-            'cache_dir': '~/.cache/pipd',
-            'log_dir': '~/.local/share/pipd/logs',
-            'temp_dir': '/tmp/pipd'
-        }
     }
-    
+
     def __init__(self, config_path: Optional[str] = None):
-        self.config_path = config_path or os.path.expanduser('~/.config/pipd/config.toml')
+        self.config_path = config_path or os.path.expanduser(
+            "~/.config/pipd/config.toml"
+        )
         self.config = self.load_config()
-    
+
     def load_config(self) -> Dict:
         """Load configuration from file"""
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path, "r") as f:
                     user_config = toml.load(f)
                 # Merge with defaults
                 return self._deep_merge(self.DEFAULT_CONFIG.copy(), user_config)
             except Exception as e:
                 logger.warning(f"Failed to load config: {e}, using defaults")
         return self.DEFAULT_CONFIG.copy()
-    
+
     def _deep_merge(self, base: Dict, update: Dict) -> Dict:
         """Deep merge two dictionaries"""
         for key, value in update.items():
@@ -233,10 +238,10 @@ class Config:
             else:
                 base[key] = value
         return base
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation"""
-        keys = key.split('.')
+        keys = key.split(".")
         value = self.config
         for k in keys:
             if isinstance(value, dict) and k in value:
@@ -249,50 +254,53 @@ class Config:
 # Transaction management
 class InstallationTransaction:
     """Manage installation transactions for rollback capability"""
-    
+
     def __init__(self):
         self.installed_packages: List[str] = []
         self.created_files: List[str] = []
         self.modified_files: Dict[str, str] = {}  # file: backup_path
         self.successful = False
-    
+
     def record_package_installation(self, package: str):
         """Record installed package"""
         self.installed_packages.append(package)
         logger.debug(f"Recorded installation: {package}")
-    
+
     def record_file_creation(self, filepath: str):
         """Record created file"""
         self.created_files.append(filepath)
         logger.debug(f"Recorded file creation: {filepath}")
-    
+
     def record_file_modification(self, filepath: str, backup_path: str):
         """Record modified file with backup"""
         self.modified_files[filepath] = backup_path
         logger.debug(f"Recorded file modification: {filepath} -> {backup_path}")
-    
+
     def commit(self):
         """Commit transaction"""
         self.successful = True
         logger.info("Transaction committed successfully")
-    
+
     def rollback(self):
         """Rollback all changes"""
         if self.successful:
             logger.warning("Cannot rollback committed transaction")
             return
-        
+
         logger.info("Rolling back transaction...")
-        
+
         # Uninstall packages in reverse order
         for package in reversed(self.installed_packages):
             try:
                 logger.info(f"Removing package: {package}")
-                subprocess.run(['apt-get', 'remove', '-y', package], 
-                             check=True, capture_output=True)
+                subprocess.run(
+                    ["apt-get", "remove", "-y", package],
+                    check=True,
+                    capture_output=True,
+                )
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to rollback package {package}: {e}")
-        
+
         # Remove created files
         for filepath in self.created_files:
             if os.path.exists(filepath):
@@ -301,7 +309,7 @@ class InstallationTransaction:
                     logger.info(f"Removed file: {filepath}")
                 except Exception as e:
                     logger.error(f"Failed to remove file {filepath}: {e}")
-        
+
         # Restore modified files
         for filepath, backup_path in self.modified_files.items():
             if os.path.exists(backup_path):
@@ -315,98 +323,108 @@ class InstallationTransaction:
 # Package resolution
 class PackageResolver:
     """Resolve package names across different sources"""
-    
+
     def __init__(self, config: Config):
         self.config = config
-    
+
     @cached(ttl=3600)
     def normalize_debian_name(self, package_name: str) -> List[str]:
         """Generate possible Debian package names"""
         validate_package_name(package_name)
-        
-        normalized = package_name.lower().replace('_', '-').replace('.', '-')
-        
+
+        normalized = package_name.lower().replace("_", "-").replace(".", "-")
+
         variations = [
-            f'python3-{normalized}',
-            f'python-{normalized}',
+            f"python3-{normalized}",
+            f"python-{normalized}",
             normalized,
-            f'python3-{package_name.lower()}',
-            f'python-{package_name.lower()}'
+            f"python3-{package_name.lower()}",
+            f"python-{package_name.lower()}",
         ]
-        
+
         # Remove duplicates while preserving order
         seen = set()
         return [x for x in variations if not (x in seen or seen.add(x))]
-    
-    def resolve_package(self, package_name: str, version: Optional[str] = None) -> PackageInfo:
+
+    def resolve_package(
+        self, package_name: str, version: Optional[str] = None
+    ) -> PackageInfo:
         """Resolve package from available sources"""
-        if self.config.get('sources.check_debian_first'):
+        if self.config.get("sources.check_debian_first"):
             # Try Debian first
             debian_info = self._check_debian(package_name, version)
             if debian_info:
                 return debian_info
-        
-        if self.config.get('sources.allow_pypi_fallback'):
+
+        if self.config.get("sources.allow_pypi_fallback"):
             # Try PyPI
             pypi_info = self._check_pypi(package_name, version)
             if pypi_info:
                 return pypi_info
-        
+
         raise PackageNotFoundError(f"Package {package_name} not found in any source")
-    
-    def _check_debian(self, package_name: str, version: Optional[str]) -> Optional[PackageInfo]:
+
+    def _check_debian(
+        self, package_name: str, version: Optional[str]
+    ) -> Optional[PackageInfo]:
         """Check if package exists in Debian repositories"""
         try:
             cache = apt.Cache()
             variations = self.normalize_debian_name(package_name)
-            
+
             for variant in variations:
                 if variant in cache:
                     pkg = cache[variant]
                     if pkg.candidate:
                         # Check version if specified
-                        if version and not self._version_matches(pkg.candidate.version, version):
+                        if version and not self._version_matches(
+                            pkg.candidate.version, version
+                        ):
                             continue
-                        
+
                         return PackageInfo(
                             name=variant,
                             version=pkg.candidate.version,
                             source=PackageSource.DEBIAN.value,
                             metadata={
-                                'description': pkg.candidate.description,
-                                'size': pkg.candidate.size,
-                                'dependencies': [str(dep) for dep in pkg.candidate.dependencies]
-                            }
+                                "description": pkg.candidate.description,
+                                "size": pkg.candidate.size,
+                                "dependencies": [
+                                    str(dep) for dep in pkg.candidate.dependencies
+                                ],
+                            },
                         )
         except Exception as e:
             logger.error(f"Error checking Debian package: {e}")
-        
+
         return None
-    
+
     @cached(ttl=1800)
-    def _check_pypi(self, package_name: str, version: Optional[str]) -> Optional[PackageInfo]:
+    def _check_pypi(
+        self, package_name: str, version: Optional[str]
+    ) -> Optional[PackageInfo]:
         """Check if package exists on PyPI"""
         try:
             if version:
-                url = f'https://pypi.org/pypi/{package_name}/{version}/json'
+                url = f"https://pypi.org/pypi/{package_name}/{version}/json"
             else:
-                url = f'https://pypi.org/pypi/{package_name}/json'
-            
+                url = f"https://pypi.org/pypi/{package_name}/json"
+
             response = requests.get(url, timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 return PackageInfo(
                     name=package_name,
-                    version=version or data['info']['version'],
+                    version=version or data["info"]["version"],
                     source=PackageSource.PYPI.value,
-                    metadata=data
+                    metadata=data,
                 )
         except requests.RequestException as e:
             logger.error(f"Error checking PyPI: {e}")
-        
+
         return None
-    
+
     def _version_matches(self, installed: str, requested: str) -> bool:
         """Check if installed version matches requested"""
         # Simple equality check for now
@@ -417,38 +435,40 @@ class PackageResolver:
 # Dependency management
 class DependencyResolver:
     """Resolve and manage package dependencies"""
-    
+
     def __init__(self):
         self.dependencies: Dict[str, PackageInfo] = {}
         self.conflicts: List[Dict[str, Any]] = []
-    
+
     def add_package(self, package_info: PackageInfo):
         """Add package to dependency graph"""
         name = package_info.name
-        
+
         if name in self.dependencies:
             existing = self.dependencies[name]
             if existing.version != package_info.version:
-                self.conflicts.append({
-                    'package': name,
-                    'existing': existing,
-                    'requested': package_info
-                })
+                self.conflicts.append(
+                    {"package": name, "existing": existing, "requested": package_info}
+                )
         else:
             self.dependencies[name] = package_info
-    
+
     def resolve(self) -> Dict[str, PackageInfo]:
         """Resolve dependencies"""
         if self.conflicts:
-            conflict_msg = "\n".join([
-                f"  - {c['package']}: {c['existing'].version} (from {c['existing'].source}) "
-                f"conflicts with {c['requested'].version} (from {c['requested'].source})"
-                for c in self.conflicts
-            ])
-            raise DependencyConflictError(f"Dependency conflicts found:\n{conflict_msg}")
-        
+            conflict_msg = "\n".join(
+                [
+                    f"  - {c['package']}: {c['existing'].version} (from {c['existing'].source}) "
+                    f"conflicts with {c['requested'].version} (from {c['requested'].source})"
+                    for c in self.conflicts
+                ]
+            )
+            raise DependencyConflictError(
+                f"Dependency conflicts found:\n{conflict_msg}"
+            )
+
         return self.dependencies
-    
+
     def get_installation_order(self) -> List[PackageInfo]:
         """Get packages in installation order"""
         # For now, return as-is
@@ -459,66 +479,69 @@ class DependencyResolver:
 # Package managers
 class DebianPackageManager:
     """Handle Debian package operations"""
-    
+
     def __init__(self, transaction: InstallationTransaction):
         self.transaction = transaction
-    
+
     def install(self, package_name: str) -> bool:
         """Install Debian package"""
         try:
             # Update package info
-            subprocess.run(['apt-get', 'update'], check=True, capture_output=True)
-            
+            subprocess.run(["apt-get", "update"], check=True, capture_output=True)
+
             # Install package
             result = subprocess.run(
-                ['apt-get', 'install', '-y', package_name],
-                check=True, capture_output=True, text=True
+                ["apt-get", "install", "-y", package_name],
+                check=True,
+                capture_output=True,
+                text=True,
             )
-            
+
             self.transaction.record_package_installation(package_name)
-            logger.info(f"Successfully installed {package_name} from Debian repositories")
+            logger.info(
+                f"Successfully installed {package_name} from Debian repositories"
+            )
             return True
-            
+
         except subprocess.CalledProcessError as e:
-            stderr = e.stderr if hasattr(e, 'stderr') else str(e)
-            
+            stderr = e.stderr if hasattr(e, "stderr") else str(e)
+
             if "unmet dependencies" in stderr:
                 raise InstallationError(
                     package=package_name,
                     reason="Unmet dependencies",
-                    recovery_suggestion="Try running: apt-get -f install"
+                    recovery_suggestion="Try running: apt-get -f install",
                 )
             elif "not found" in stderr:
                 raise InstallationError(
                     package=package_name,
                     reason="Package not found in repositories",
-                    recovery_suggestion="Check package name or update package lists"
+                    recovery_suggestion="Check package name or update package lists",
                 )
             else:
                 raise InstallationError(
-                    package=package_name,
-                    reason=f"Installation failed: {stderr}"
+                    package=package_name, reason=f"Installation failed: {stderr}"
                 )
-    
+
     def remove(self, package_name: str) -> bool:
         """Remove Debian package"""
         try:
             subprocess.run(
-                ['apt-get', 'remove', '-y', package_name],
-                check=True, capture_output=True
+                ["apt-get", "remove", "-y", package_name],
+                check=True,
+                capture_output=True,
             )
             logger.info(f"Successfully removed {package_name}")
             return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to remove {package_name}: {e}")
             return False
-    
+
     def is_installed(self, package_name: str) -> bool:
         """Check if package is installed"""
         try:
             result = subprocess.run(
-                ['dpkg', '-s', package_name],
-                capture_output=True, text=True
+                ["dpkg", "-s", package_name], capture_output=True, text=True
             )
             return result.returncode == 0
         except Exception:
@@ -527,235 +550,278 @@ class DebianPackageManager:
 
 class PyPIPackageManager:
     """Handle PyPI package operations"""
-    
+
     def __init__(self, transaction: InstallationTransaction, config: Config):
         self.transaction = transaction
         self.config = config
-    
+
     def download_and_convert(self, package_info: PackageInfo) -> List[str]:
         """Download PyPI package and convert to deb"""
-        temp_dir = tempfile.mkdtemp(prefix='pipd_')
+        temp_dir = tempfile.mkdtemp(prefix="pipd_")
         self.transaction.record_file_creation(temp_dir)
-        
+
         try:
             # Create a virtual environment for isolation
-            venv_dir = os.path.join(temp_dir, 'venv')
+            venv_dir = os.path.join(temp_dir, "venv")
             logger.debug(f"Creating virtual environment at {venv_dir}")
-            
+
             # Use the same Python interpreter that's running pipd
             python_executable = sys.executable
             logger.debug(f"Using Python: {python_executable}")
-            
+
             # Create venv
-            subprocess.run([
-                python_executable, '-m', 'venv', venv_dir
-            ], check=True, capture_output=True)
-            
+            subprocess.run(
+                [python_executable, "-m", "venv", venv_dir],
+                check=True,
+                capture_output=True,
+            )
+
             # Paths for venv
-            if sys.platform == 'win32':
-                pip_path = os.path.join(venv_dir, 'Scripts', 'pip')
-                python_path = os.path.join(venv_dir, 'Scripts', 'python')
+            if sys.platform == "win32":
+                pip_path = os.path.join(venv_dir, "Scripts", "pip")
+                python_path = os.path.join(venv_dir, "Scripts", "python")
             else:
-                pip_path = os.path.join(venv_dir, 'bin', 'pip')
-                python_path = os.path.join(venv_dir, 'bin', 'python')
-            
+                pip_path = os.path.join(venv_dir, "bin", "pip")
+                python_path = os.path.join(venv_dir, "bin", "python")
+
             # Upgrade pip in venv to avoid issues
             logger.debug("Upgrading pip in virtual environment")
-            
+
             # For Python 3.13+, use ensurepip first
             python_version = sys.version_info
             if python_version >= (3, 13):
                 logger.debug("Python 3.13+ detected, using ensurepip")
-                subprocess.run([
-                    python_path, '-m', 'ensurepip', '--upgrade'
-                ], check=True, capture_output=True)
-            
+                subprocess.run(
+                    [python_path, "-m", "ensurepip", "--upgrade"],
+                    check=True,
+                    capture_output=True,
+                )
+
             # Then upgrade pip
-            subprocess.run([
-                python_path, '-m', 'pip', 'install', '--upgrade', 'pip'
-            ], check=True, capture_output=True)
-            
+            subprocess.run(
+                [python_path, "-m", "pip", "install", "--upgrade", "pip"],
+                check=True,
+                capture_output=True,
+            )
+
             # Install the package and its dependencies in the venv
-            install_cmd = [pip_path, 'install']
+            install_cmd = [pip_path, "install"]
             if package_info.version:
-                install_cmd.append(f'{package_info.name}=={package_info.version}')
+                install_cmd.append(f"{package_info.name}=={package_info.version}")
             else:
                 install_cmd.append(package_info.name)
-            
+
             logger.debug(f"Installing {package_info.name} in virtual environment")
             subprocess.run(install_cmd, check=True, capture_output=True)
-            
+
             # Generate requirements file with all dependencies
-            requirements_path = os.path.join(temp_dir, 'requirements.txt')
-            subprocess.run([
-                pip_path, 'freeze'
-            ], check=True, capture_output=True, text=True, stdout=open(requirements_path, 'w'))
-            
+            requirements_path = os.path.join(temp_dir, "requirements.txt")
+            subprocess.run(
+                [pip_path, "freeze"],
+                check=True,
+                capture_output=True,
+                text=True,
+                stdout=open(requirements_path, "w"),
+            )
+
             # Alternative approach: Use stdeb directly if py2deb fails
             deb_files = []
-            
+
             # Try different conversion methods based on availability
             conversion_methods = [
-                ('py2deb', self._convert_with_py2deb),
-                ('stdeb', self._convert_with_stdeb),
-                ('wheel', self._convert_wheel_to_deb),
-                ('minimal', self._create_minimal_deb)
+                ("py2deb", self._convert_with_py2deb),
+                ("stdeb", self._convert_with_stdeb),
+                ("wheel", self._convert_wheel_to_deb),
+                ("minimal", self._create_minimal_deb),
             ]
-            
+
             for method_name, method_func in conversion_methods:
                 try:
                     logger.info(f"Attempting conversion with {method_name}")
-                    deb_files = method_func(package_info, temp_dir, python_path, pip_path)
+                    deb_files = method_func(
+                        package_info, temp_dir, python_path, pip_path
+                    )
                     if deb_files:
                         logger.info(f"Successfully converted using {method_name}")
                         break
                 except Exception as e:
                     logger.warning(f"{method_name} conversion failed: {e}")
                     continue
-            
+
             if not deb_files:
                 raise InstallationError(
                     package=package_info.name,
                     reason="All package conversion methods failed",
-                    recovery_suggestion="Check that python3-stdeb and build tools are installed"
+                    recovery_suggestion="Check that python3-stdeb and build tools are installed",
                 )
-            
+
             return deb_files
-                
+
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.decode() if e.stderr else str(e)
             raise InstallationError(
                 package=package_info.name,
                 reason=f"Failed to convert PyPI package: {stderr}",
-                recovery_suggestion="Ensure python3-venv is installed: apt install python3-venv"
+                recovery_suggestion="Ensure python3-venv is installed: apt install python3-venv",
             )
         except Exception as e:
             raise InstallationError(
-                package=package_info.name,
-                reason=f"Unexpected error: {e}"
+                package=package_info.name, reason=f"Unexpected error: {e}"
             )
-    
-    def _convert_with_py2deb(self, package_info: PackageInfo, temp_dir: str,
-                            python_path: str, pip_path: str) -> List[str]:
+
+    def _convert_with_py2deb(
+        self, package_info: PackageInfo, temp_dir: str, python_path: str, pip_path: str
+    ) -> List[str]:
         """Convert using py2deb"""
         try:
             # Check if py2deb is available
-            subprocess.run(['pipd-py2deb', '--help'], check=True, capture_output=True)
-            
-            requirements_path = os.path.join(temp_dir, 'requirements.txt')
-            deb_dir = os.path.join(temp_dir, 'debs')
+            subprocess.run(["pipd-py2deb", "--help"], check=True, capture_output=True)
+
+            requirements_path = os.path.join(temp_dir, "requirements.txt")
+            deb_dir = os.path.join(temp_dir, "debs")
             os.makedirs(deb_dir)
-            
+
             # Use the wrapper script
-            subprocess.run([
-                'pipd-py2deb',
-                '-r', requirements_path,
-                '-d', deb_dir,
-                '--use-system-packages'
-            ], check=True, capture_output=True)
-            
+            subprocess.run(
+                [
+                    "pipd-py2deb",
+                    "-r",
+                    requirements_path,
+                    "-d",
+                    deb_dir,
+                    "--use-system-packages",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
             # Find generated deb files
             deb_files = [
                 os.path.join(deb_dir, f)
                 for f in os.listdir(deb_dir)
-                if f.endswith('.deb')
+                if f.endswith(".deb")
             ]
-            
+
             return deb_files
-            
+
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise Exception("py2deb not available or failed")
-    
-    def _convert_with_stdeb(self, package_info: PackageInfo, temp_dir: str, 
-                           python_path: str, pip_path: str) -> List[str]:
+
+    def _convert_with_stdeb(
+        self, package_info: PackageInfo, temp_dir: str, python_path: str, pip_path: str
+    ) -> List[str]:
         """Convert package using stdeb as fallback"""
         try:
             # Download the package source
-            download_dir = os.path.join(temp_dir, 'download')
+            download_dir = os.path.join(temp_dir, "download")
             os.makedirs(download_dir)
-            
-            subprocess.run([
-                pip_path, 'download', '--no-deps', '-d', download_dir,
-                f'{package_info.name}=={package_info.version}' if package_info.version else package_info.name
-            ], check=True, capture_output=True)
-            
+
+            subprocess.run(
+                [
+                    pip_path,
+                    "download",
+                    "--no-deps",
+                    "-d",
+                    download_dir,
+                    (
+                        f"{package_info.name}=={package_info.version}"
+                        if package_info.version
+                        else package_info.name
+                    ),
+                ],
+                check=True,
+                capture_output=True,
+            )
+
             # Find the downloaded file
-            downloaded_files = [f for f in os.listdir(download_dir) 
-                              if f.endswith(('.tar.gz', '.zip', '.whl'))]
-            
+            downloaded_files = [
+                f
+                for f in os.listdir(download_dir)
+                if f.endswith((".tar.gz", ".zip", ".whl"))
+            ]
+
             if not downloaded_files:
                 return []
-            
+
             source_file = os.path.join(download_dir, downloaded_files[0])
-            
+
             # If it's a wheel, we need to handle it differently
-            if source_file.endswith('.whl'):
+            if source_file.endswith(".whl"):
                 return self._convert_wheel_to_deb(package_info, source_file, temp_dir)
-            
+
             # Extract and convert using stdeb
-            extract_dir = os.path.join(temp_dir, 'extract')
+            extract_dir = os.path.join(temp_dir, "extract")
             os.makedirs(extract_dir)
-            
+
             import tarfile
             import zipfile
-            
-            if source_file.endswith('.tar.gz'):
-                with tarfile.open(source_file, 'r:gz') as tar:
+
+            if source_file.endswith(".tar.gz"):
+                with tarfile.open(source_file, "r:gz") as tar:
                     tar.extractall(extract_dir)
             else:
-                with zipfile.ZipFile(source_file, 'r') as zip_ref:
+                with zipfile.ZipFile(source_file, "r") as zip_ref:
                     zip_ref.extractall(extract_dir)
-            
+
             # Find setup.py
             setup_dirs = []
             for root, dirs, files in os.walk(extract_dir):
-                if 'setup.py' in files:
+                if "setup.py" in files:
                     setup_dirs.append(root)
-            
+
             if not setup_dirs:
                 return []
-            
+
             # Convert using stdeb
             setup_dir = setup_dirs[0]
             original_cwd = os.getcwd()
             os.chdir(setup_dir)
-            
+
             try:
                 # Run stdeb
-                subprocess.run([
-                    python_path, 'setup.py', '--command-packages=stdeb.command', 'bdist_deb'
-                ], check=True, capture_output=True)
-                
+                subprocess.run(
+                    [
+                        python_path,
+                        "setup.py",
+                        "--command-packages=stdeb.command",
+                        "bdist_deb",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+
                 # Find generated debs
                 deb_files = []
                 for root, dirs, files in os.walk(setup_dir):
                     for f in files:
-                        if f.endswith('.deb'):
+                        if f.endswith(".deb"):
                             deb_files.append(os.path.join(root, f))
-                
+
                 return deb_files
-                
+
             finally:
                 os.chdir(original_cwd)
-                
+
         except Exception as e:
             logger.error(f"stdeb conversion failed: {e}")
             return []
-    
-    def _convert_wheel_to_deb(self, package_info: PackageInfo, wheel_file: str, temp_dir: str) -> List[str]:
+
+    def _convert_wheel_to_deb(
+        self, package_info: PackageInfo, wheel_file: str, temp_dir: str
+    ) -> List[str]:
         """Convert a wheel file to deb package"""
         try:
             # Create debian package structure
             pkg_name = f'python3-{package_info.name.lower().replace("_", "-").replace(".", "-")}'
-            version = package_info.version or '0.0.1'
-            
-            deb_root = os.path.join(temp_dir, f'{pkg_name}_{version}')
+            version = package_info.version or "0.0.1"
+
+            deb_root = os.path.join(temp_dir, f"{pkg_name}_{version}")
             os.makedirs(deb_root)
-            
+
             # Create DEBIAN directory
-            debian_dir = os.path.join(deb_root, 'DEBIAN')
+            debian_dir = os.path.join(deb_root, "DEBIAN")
             os.makedirs(debian_dir)
-            
+
             # Create control file
             control_content = f"""Package: {pkg_name}
 Version: {version}
@@ -767,57 +833,66 @@ Description: {package_info.name} (converted from PyPI)
 Section: python
 Priority: optional
 """
-            
-            with open(os.path.join(debian_dir, 'control'), 'w') as f:
+
+            with open(os.path.join(debian_dir, "control"), "w") as f:
                 f.write(control_content)
-            
+
             # Extract wheel to proper location
             import zipfile
-            install_dir = os.path.join(deb_root, 'usr', 'local', 'lib', 'python3', 'dist-packages')
+
+            install_dir = os.path.join(
+                deb_root, "usr", "local", "lib", "python3", "dist-packages"
+            )
             os.makedirs(install_dir)
-            
-            with zipfile.ZipFile(wheel_file, 'r') as zip_ref:
+
+            with zipfile.ZipFile(wheel_file, "r") as zip_ref:
                 zip_ref.extractall(install_dir)
-            
+
             # Build the deb package
-            deb_file = os.path.join(temp_dir, f'{pkg_name}_{version}_all.deb')
-            subprocess.run([
-                'dpkg-deb', '--build', deb_root, deb_file
-            ], check=True, capture_output=True)
-            
+            deb_file = os.path.join(temp_dir, f"{pkg_name}_{version}_all.deb")
+            subprocess.run(
+                ["dpkg-deb", "--build", deb_root, deb_file],
+                check=True,
+                capture_output=True,
+            )
+
             return [deb_file] if os.path.exists(deb_file) else []
-            
+
         except Exception as e:
             logger.error(f"Wheel conversion failed: {e}")
             return []
-    
-    def _create_minimal_deb(self, package_info: PackageInfo, temp_dir: str, venv_dir: str) -> List[str]:
+
+    def _create_minimal_deb(
+        self, package_info: PackageInfo, temp_dir: str, venv_dir: str
+    ) -> List[str]:
         """Create a minimal debian package as last resort"""
         try:
             pkg_name = f'python3-{package_info.name.lower().replace("_", "-").replace(".", "-")}'
-            version = package_info.version or '0.0.1'
-            
+            version = package_info.version or "0.0.1"
+
             # Create package structure
-            deb_root = os.path.join(temp_dir, f'{pkg_name}_{version}')
-            debian_dir = os.path.join(deb_root, 'DEBIAN')
+            deb_root = os.path.join(temp_dir, f"{pkg_name}_{version}")
+            debian_dir = os.path.join(deb_root, "DEBIAN")
             os.makedirs(debian_dir)
-            
+
             # Copy site-packages from venv
             venv_site_packages = None
             for root, dirs, files in os.walk(venv_dir):
-                if 'site-packages' in dirs:
-                    venv_site_packages = os.path.join(root, 'site-packages')
+                if "site-packages" in dirs:
+                    venv_site_packages = os.path.join(root, "site-packages")
                     break
-            
+
             if not venv_site_packages:
                 return []
-            
+
             # Destination directory
-            dest_dir = os.path.join(deb_root, 'usr', 'local', 'lib', 'python3', 'dist-packages')
+            dest_dir = os.path.join(
+                deb_root, "usr", "local", "lib", "python3", "dist-packages"
+            )
             os.makedirs(dest_dir)
-            
+
             # Copy the package
-            package_dir_name = package_info.name.replace('-', '_')
+            package_dir_name = package_info.name.replace("-", "_")
             for item in os.listdir(venv_site_packages):
                 if item.startswith(package_dir_name) or item == package_dir_name:
                     src = os.path.join(venv_site_packages, item)
@@ -826,7 +901,7 @@ Priority: optional
                         shutil.copytree(src, dst)
                     else:
                         shutil.copy2(src, dst)
-            
+
             # Create control file
             control_content = f"""Package: {pkg_name}
 Version: {version}
@@ -838,18 +913,20 @@ Section: python
 Priority: optional
 Depends: python3
 """
-            
-            with open(os.path.join(debian_dir, 'control'), 'w') as f:
+
+            with open(os.path.join(debian_dir, "control"), "w") as f:
                 f.write(control_content)
-            
+
             # Build package
-            deb_file = os.path.join(temp_dir, f'{pkg_name}_{version}_all.deb')
-            subprocess.run([
-                'dpkg-deb', '--build', deb_root, deb_file
-            ], check=True, capture_output=True)
-            
+            deb_file = os.path.join(temp_dir, f"{pkg_name}_{version}_all.deb")
+            subprocess.run(
+                ["dpkg-deb", "--build", deb_root, deb_file],
+                check=True,
+                capture_output=True,
+            )
+
             return [deb_file] if os.path.exists(deb_file) else []
-            
+
         except Exception as e:
             logger.error(f"Minimal package creation failed: {e}")
             return []
@@ -858,157 +935,173 @@ Depends: python3
 # Main orchestrator
 class PipdOrchestrator:
     """Main orchestrator for pipd operations"""
-    
+
     def __init__(self, config: Config):
         self.config = config
         self.resolver = PackageResolver(config)
         self.dependency_resolver = DependencyResolver()
-    
-    def install_packages(self, package_specs: List[str], upgrade: bool = False,
-                        force_reinstall: bool = False) -> bool:
+
+    def install_packages(
+        self,
+        package_specs: List[str],
+        upgrade: bool = False,
+        force_reinstall: bool = False,
+    ) -> bool:
         """Install multiple packages"""
         transaction = InstallationTransaction()
         debian_mgr = DebianPackageManager(transaction)
         pypi_mgr = PyPIPackageManager(transaction, self.config)
-        
+
         try:
             # Parse all package specifications
             packages_to_install = []
             for spec in package_specs:
                 name, version = parse_package_spec(spec)
-                logger.info(f"Resolving package: {name}" + (f"=={version}" if version else ""))
-                
+                logger.info(
+                    f"Resolving package: {name}" + (f"=={version}" if version else "")
+                )
+
                 # Resolve package
                 package_info = self.resolver.resolve_package(name, version)
                 packages_to_install.append(package_info)
                 self.dependency_resolver.add_package(package_info)
-            
+
             # Resolve dependencies
             self.dependency_resolver.resolve()
-            
+
             # Get installation order
             install_order = self.dependency_resolver.get_installation_order()
-            
+
             # Install packages
             for package_info in install_order:
-                logger.info(f"Installing {package_info.name} from {package_info.source}")
-                
+                logger.info(
+                    f"Installing {package_info.name} from {package_info.source}"
+                )
+
                 if package_info.source == PackageSource.DEBIAN.value:
                     # Check if already installed
-                    if debian_mgr.is_installed(package_info.name) and not force_reinstall:
+                    if (
+                        debian_mgr.is_installed(package_info.name)
+                        and not force_reinstall
+                    ):
                         logger.info(f"{package_info.name} is already installed")
                         continue
-                    
+
                     debian_mgr.install(package_info.name)
-                    
+
                 elif package_info.source == PackageSource.PYPI.value:
                     # Convert and install
                     deb_files = pypi_mgr.download_and_convert(package_info)
-                    
+
                     if not deb_files:
                         raise InstallationError(
                             package=package_info.name,
-                            reason="No .deb packages generated"
+                            reason="No .deb packages generated",
                         )
-                    
+
                     # Install deb files
                     for deb_file in deb_files:
                         subprocess.run(
-                            ['dpkg', '-i', deb_file],
-                            check=True, capture_output=True
+                            ["dpkg", "-i", deb_file], check=True, capture_output=True
                         )
                         # Extract package name for transaction recording
-                        deb_name = os.path.basename(deb_file).split('_')[0]
+                        deb_name = os.path.basename(deb_file).split("_")[0]
                         transaction.record_package_installation(deb_name)
-                    
+
                     # Fix any dependency issues
                     subprocess.run(
-                        ['apt-get', '-f', 'install', '-y'],
-                        check=True, capture_output=True
+                        ["apt-get", "-f", "install", "-y"],
+                        check=True,
+                        capture_output=True,
                     )
-            
+
             # Commit transaction
             transaction.commit()
             logger.info("All packages installed successfully")
             return True
-            
+
         except Exception as e:
             logger.error(f"Installation failed: {e}")
             transaction.rollback()
             raise
-    
-    def list_packages(self, filter_names: Optional[List[str]] = None) -> List[Dict[str, str]]:
+
+    def list_packages(
+        self, filter_names: Optional[List[str]] = None
+    ) -> List[Dict[str, str]]:
         """List installed packages"""
         packages = []
-        
+
         try:
             # Get all python packages
             result = subprocess.run(
-                ['dpkg', '-l'],
-                capture_output=True, text=True, check=True
+                ["dpkg", "-l"], capture_output=True, text=True, check=True
             )
-            
+
             for line in result.stdout.splitlines():
-                if line.startswith('ii') and ('python3-' in line or 'python-' in line):
+                if line.startswith("ii") and ("python3-" in line or "python-" in line):
                     parts = line.split()
                     if len(parts) >= 4:
                         name = parts[1]
                         version = parts[2]
-                        
+
                         # Apply filter if specified
                         if filter_names:
                             if not any(f in name for f in filter_names):
                                 continue
-                        
-                        packages.append({
-                            'name': name,
-                            'version': version,
-                            'description': ' '.join(parts[3:])
-                        })
-            
+
+                        packages.append(
+                            {
+                                "name": name,
+                                "version": version,
+                                "description": " ".join(parts[3:]),
+                            }
+                        )
+
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to list packages: {e}")
-        
+
         return packages
-    
+
     def show_package_info(self, package_name: str) -> Optional[Dict[str, Any]]:
         """Show detailed package information"""
         try:
             # Try to resolve package
             package_info = self.resolver.resolve_package(package_name)
-            
+
             # Get additional info if it's a Debian package
             if package_info.source == PackageSource.DEBIAN.value:
                 result = subprocess.run(
-                    ['apt-cache', 'show', package_info.name],
-                    capture_output=True, text=True, check=True
+                    ["apt-cache", "show", package_info.name],
+                    capture_output=True,
+                    text=True,
+                    check=True,
                 )
-                
+
                 # Parse output
-                info = {'raw_output': result.stdout}
+                info = {"raw_output": result.stdout}
                 for line in result.stdout.splitlines():
-                    if ':' in line:
-                        key, value = line.split(':', 1)
+                    if ":" in line:
+                        key, value = line.split(":", 1)
                         info[key.strip()] = value.strip()
-                
+
                 return info
-            
+
             return package_info.metadata
-            
+
         except Exception as e:
             logger.error(f"Failed to get package info: {e}")
             return None
-    
+
     def uninstall_packages(self, package_names: List[str]) -> bool:
         """Uninstall packages"""
         debian_mgr = DebianPackageManager(InstallationTransaction())
-        
+
         success_count = 0
         for package in package_names:
             try:
                 # Try different package name variations
                 variations = self.resolver.normalize_debian_name(package)
-                
+
                 removed = False
                 for variant in variations:
                     if debian_mgr.is_installed(variant):
@@ -1016,44 +1109,46 @@ class PipdOrchestrator:
                             success_count += 1
                             removed = True
                             break
-                
+
                 if not removed:
                     logger.warning(f"Package {package} not found or already removed")
-                    
+
             except Exception as e:
                 logger.error(f"Failed to uninstall {package}: {e}")
-        
+
         # Clean up
         try:
-            subprocess.run(['apt-get', 'autoremove', '-y'], check=True, capture_output=True)
+            subprocess.run(
+                ["apt-get", "autoremove", "-y"], check=True, capture_output=True
+            )
         except subprocess.CalledProcessError:
             logger.warning("Failed to autoremove packages")
-        
+
         return success_count > 0
 
 
 # CLI Implementation
 @click.group()
 @click.version_option(version=__version__)
-@click.option('--config', '-c', type=click.Path(), help='Configuration file path')
-@click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
+@click.option("--config", "-c", type=click.Path(), help="Configuration file path")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.pass_context
 def cli(ctx, config, verbose):
     """pipd - Python Package Installer for Debian
-    
+
     A tool that bridges Debian system packages and PyPI packages,
     prioritizing system packages when available.
     """
     # Ensure object exists
     ctx.ensure_object(dict)
-    
+
     # Check privileges for commands that need it
-    if ctx.invoked_subcommand in ['install', 'uninstall']:
+    if ctx.invoked_subcommand in ["install", "uninstall"]:
         check_privileges()
-    
+
     # Set up configuration
-    ctx.obj['config'] = Config(config)
-    
+    ctx.obj["config"] = Config(config)
+
     # Configure logging level
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -1061,32 +1156,38 @@ def cli(ctx, config, verbose):
 
 
 @cli.command()
-@click.argument('packages', nargs=-1, required=True)
-@click.option('--upgrade', '-U', is_flag=True, help='Upgrade packages to latest version')
-@click.option('--force-reinstall', is_flag=True, help='Force reinstallation')
-@click.option('--requirements', '-r', type=click.Path(exists=True), 
-              help='Install from requirements file')
+@click.argument("packages", nargs=-1, required=True)
+@click.option(
+    "--upgrade", "-U", is_flag=True, help="Upgrade packages to latest version"
+)
+@click.option("--force-reinstall", is_flag=True, help="Force reinstallation")
+@click.option(
+    "--requirements",
+    "-r",
+    type=click.Path(exists=True),
+    help="Install from requirements file",
+)
 @click.pass_context
 def install(ctx, packages, upgrade, force_reinstall, requirements):
     """Install Python packages"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     orchestrator = PipdOrchestrator(config)
-    
+
     # Collect all packages to install
     all_packages = [p for p in packages]
-    
+
     # Add packages from requirements file
     if requirements:
-        with open(requirements, 'r') as f:
+        with open(requirements, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     all_packages.append(line)
-    
+
     if not all_packages:
         click.echo("No packages specified")
         ctx.exit(1)
-    
+
     try:
         orchestrator.install_packages(all_packages, upgrade, force_reinstall)
         click.echo("Installation completed successfully")
@@ -1100,20 +1201,25 @@ def install(ctx, packages, upgrade, force_reinstall, requirements):
 
 
 @cli.command()
-@click.argument('packages', nargs=-1)
-@click.option('--format', '-f', type=click.Choice(['table', 'json', 'simple']), 
-              default='table', help='Output format')
+@click.argument("packages", nargs=-1)
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["table", "json", "simple"]),
+    default="table",
+    help="Output format",
+)
 @click.pass_context
 def list(ctx, packages, format):
     """List installed Python packages"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     orchestrator = PipdOrchestrator(config)
-    
+
     installed = orchestrator.list_packages([p for p in packages] if packages else None)
-    
-    if format == 'json':
+
+    if format == "json":
         click.echo(json.dumps(installed, indent=2))
-    elif format == 'simple':
+    elif format == "simple":
         for pkg in installed:
             click.echo(f"{pkg['name']} {pkg['version']}")
     else:  # table
@@ -1121,28 +1227,32 @@ def list(ctx, packages, format):
             # Print header
             click.echo(f"{'Package':<40} {'Version':<20} {'Description'}")
             click.echo("-" * 100)
-            
+
             # Print packages
             for pkg in installed:
-                desc = pkg['description'][:40] + '...' if len(pkg['description']) > 40 else pkg['description']
+                desc = (
+                    pkg["description"][:40] + "..."
+                    if len(pkg["description"]) > 40
+                    else pkg["description"]
+                )
                 click.echo(f"{pkg['name']:<40} {pkg['version']:<20} {desc}")
         else:
             click.echo("No packages found")
 
 
 @cli.command()
-@click.argument('package')
+@click.argument("package")
 @click.pass_context
 def show(ctx, package):
     """Show detailed information about a package"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     orchestrator = PipdOrchestrator(config)
-    
+
     info = orchestrator.show_package_info(package)
-    
+
     if info:
-        if 'raw_output' in info:
-            click.echo(info['raw_output'])
+        if "raw_output" in info:
+            click.echo(info["raw_output"])
         else:
             click.echo(json.dumps(info, indent=2))
     else:
@@ -1151,19 +1261,19 @@ def show(ctx, package):
 
 
 @cli.command()
-@click.argument('packages', nargs=-1, required=True)
-@click.option('--yes', '-y', is_flag=True, help='Skip confirmation')
+@click.argument("packages", nargs=-1, required=True)
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
 @click.pass_context
 def uninstall(ctx, packages, yes):
     """Uninstall Python packages"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     orchestrator = PipdOrchestrator(config)
-    
+
     if not yes:
-        package_list = ', '.join(packages)
+        package_list = ", ".join(packages)
         if not click.confirm(f"Uninstall {package_list}?"):
             ctx.exit(0)
-    
+
     try:
         if orchestrator.uninstall_packages([p for p in packages]):
             click.echo("Packages uninstalled successfully")
@@ -1187,9 +1297,9 @@ def cache(ctx):
 @click.pass_context
 def config(ctx):
     """Show current configuration"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     click.echo(json.dumps(config.config, indent=2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
